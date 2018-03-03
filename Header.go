@@ -1,25 +1,29 @@
-package main
+package mcdf
 
 import (
 	"encoding/binary"
 	"io"
-	"os"
 )
 
 type Header struct {
-	headerSignature []byte
-	majorVersion    uint16
-	sectorShift     uint16
-	difat           []int
-	clsid           []byte
-	minorVersion    uint16
-	byteOrder       uint
-	miniSectorShift uint
-	unUsed2         uint
-}
-
-func (h *Header) SetClsid(b []byte) {
-	h.clsid = b
+	headerSignature        []byte
+	majorVersion           uint16
+	sectorShift            uint16
+	difat                  []uint32
+	Clsid                  []byte
+	minorVersion           uint16
+	byteOrder              uint16
+	miniSectorShift        uint32
+	unUsed                 []byte
+	DirectorySectorNumbers int32
+	FATSectorsNumber       int32
+	FirstDirectorySectorID uint32
+	unUsed2                uint32
+	MinSizeStandardStream  uint32
+	FirstMiniFATSectorID   uint32
+	MiniFATSectorsNumber   int32
+	FirstDIFATSectorID     uint32
+	DIFATSectorsNumber     uint32
 }
 
 func NewHeader() *Header {
@@ -28,11 +32,15 @@ func NewHeader() *Header {
 	h.majorVersion = 3
 	h.minorVersion = 0x003E
 	h.byteOrder = 0xFFFE
-	h.clsid = make([]byte, 16)
+	h.Clsid = make([]byte, 16)
 	h.sectorShift = 0x0009
 	h.miniSectorShift = 6
-	h.unUsed2 = 0 // need to check this
-	h.difat = make([]int, 109)
+	h.unUsed = make([]byte, 6)
+	h.FirstDirectorySectorID = 0xFFFFFFFE
+	h.MinSizeStandardStream = 4096
+	h.FirstMiniFATSectorID = 0xFFFFFFFE
+	h.FirstDIFATSectorID = 0xFFFFFFFE
+	h.difat = make([]uint32, 109)
 	for i := range h.difat {
 		h.difat[i] = 0xFFFFFFFF
 	}
@@ -40,26 +48,37 @@ func NewHeader() *Header {
 }
 
 func (h *Header) Write(w io.Writer) {
-	w.Write(h.headerSignature)
-	w.Write(h.clsid)
+	binary.Write(w, binary.LittleEndian, h.headerSignature)
+	binary.Write(w, binary.LittleEndian, h.Clsid)
 	binary.Write(w, binary.LittleEndian, h.minorVersion)
 	binary.Write(w, binary.LittleEndian, h.majorVersion)
 	binary.Write(w, binary.LittleEndian, h.byteOrder)
 	binary.Write(w, binary.LittleEndian, h.sectorShift)
 	binary.Write(w, binary.LittleEndian, h.miniSectorShift)
+	binary.Write(w, binary.LittleEndian, h.unUsed)
+	binary.Write(w, binary.LittleEndian, h.DirectorySectorNumbers)
+	binary.Write(w, binary.LittleEndian, h.FATSectorsNumber)
+	binary.Write(w, binary.LittleEndian, h.FirstDirectorySectorID)
 	binary.Write(w, binary.LittleEndian, h.unUsed2)
+	binary.Write(w, binary.LittleEndian, h.MinSizeStandardStream)
+	binary.Write(w, binary.LittleEndian, h.FirstMiniFATSectorID)
+	binary.Write(w, binary.LittleEndian, h.MiniFATSectorsNumber)
+	binary.Write(w, binary.LittleEndian, h.FirstDIFATSectorID)
+	binary.Write(w, binary.LittleEndian, h.DIFATSectorsNumber)
+
+	for _, i := range h.difat {
+		binary.Write(w, binary.LittleEndian, i)
+	}
+
+	if h.majorVersion == 4 {
+		zeroHead := make([]byte, 3584)
+		w.Write(zeroHead)
+	}
+
 }
 
 func check(e error) {
 	if e != nil {
 		panic(e)
 	}
-}
-
-func main() {
-	h := NewHeader()
-	f, err := os.Create("./data")
-	check(err)
-	defer f.Close()
-	h.Write(f)
 }
