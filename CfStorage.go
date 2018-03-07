@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -14,6 +15,8 @@ type DirectoryEntry struct {
 	storageClsid  string
 	creationDate  []byte
 	modifyDate    []byte
+	entryName     string
+	nameLength    uint16
 }
 
 func NewDirectoryEntry(name string, stageType uint8, directoryEntries []DirectoryEntry) *DirectoryEntry {
@@ -30,8 +33,32 @@ func NewDirectoryEntry(name string, stageType uint8, directoryEntries []Director
 		buf := make([]byte, 8)
 		binary.LittleEndian.PutUint64(buf, val)
 		de.creationDate = buf
+	} else if stageType == 5 {
+		de.creationDate = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+		de.modifyDate = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	}
+	de.SetEntryName(name)
 	return &de
+
+}
+
+func (de *DirectoryEntry) SetEntryName(name string) {
+	if strings.Contains(name, "\\") || strings.Contains(name, "/") || strings.Contains(name, ":") || strings.Contains(name, "!") {
+		panic("illegal chars")
+	}
+	if len(name) > 31 {
+		panic("must be smaller than 31")
+	}
+
+	temp := []byte(name)
+	newName := make([]byte, 64)
+	for index, val := range temp {
+		newName[index] = val
+	}
+	newName[len(temp)] = 0x00
+	newName[len(temp)+1] = 0x00
+	de.nameLength = uint16(len(temp) + 2)
+	de.entryName = name
 
 }
 
