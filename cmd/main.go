@@ -18,7 +18,6 @@ func main() {
 	b := make([]byte, 0, 1000)
 	fmt.Println(b)
 	cf := mcdf.NewCompoundFile()
-	myStream := cf.
 	fmt.Println(cf)
 	h := mcdf.NewHeader()
 	f, err := os.Create("./data")
