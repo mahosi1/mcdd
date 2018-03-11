@@ -7,6 +7,8 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/sakeven/RbTree"
 )
 
 type DirectoryEntry struct {
@@ -17,6 +19,29 @@ type DirectoryEntry struct {
 	modifyDate    []byte
 	entryName     string
 	nameLength    uint16
+}
+
+func (de *DirectoryEntry) LessThan(b interface{}) bool {
+	de2, _ := b.(*DirectoryEntry)
+	if de.nameLength > de2.nameLength {
+		return false
+	}
+	if de.nameLength < de2.nameLength {
+		return true
+	}
+	thisName := string(de.entryName)
+	otherName := string(de2.entryName)
+	for z := 0; z < len(de.entryName); z++ {
+		thisChar := strings.ToUpper(string(thisName[z]))[0]
+		otherChar := strings.ToUpper(string(otherName[z]))[0]
+		if thisChar > otherChar {
+			return false
+		} else if thisChar <= otherChar {
+			return true
+		}
+	}
+
+	return false
 }
 
 func NewDirectoryEntry(name string, stageType uint8, directoryEntries []DirectoryEntry) *DirectoryEntry {
@@ -70,10 +95,12 @@ func TryNew(streamName string, stageType uint8, directoryEntries []DirectoryEntr
 type CfStorage struct {
 	compoundFile   *CompoundFile
 	directoryEntry *DirectoryEntry
+	children       *rbtree.Tree
 }
 
 func NewCfStorage(compoundFile *CompoundFile, directoryEntry *DirectoryEntry) *CfStorage {
 	cf := &CfStorage{}
+	cf.children = rbtree.NewTree()
 	cf.compoundFile = compoundFile
 	cf.directoryEntry = directoryEntry
 	return cf
@@ -94,6 +121,8 @@ func newUUID() string {
 
 func (cf *CfStorage) AddStream(streamName string) *CfStream {
 	dirEntry := TryNew(streamName, 2, cf.compoundFile.DirectoryEntries)
+
+	cf.children.Insert(dirEntry, dirEntry)
 	fmt.Println(dirEntry)
 	return nil
 }

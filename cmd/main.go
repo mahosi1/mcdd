@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mcdf"
 	"os"
+	"strings"
 
 	"github.com/sakeven/RbTree"
 )
@@ -15,6 +16,10 @@ func check(e error) {
 }
 
 func main() {
+	s := "abc"
+	a := s[0]
+	i := strings.ToUpper(string(a))
+	fmt.Println(i)
 	b := make([]byte, 0, 1000)
 	fmt.Println(b)
 	cf := mcdf.NewCompoundFile()
