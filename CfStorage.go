@@ -19,6 +19,8 @@ type DirectoryEntry struct {
 	modifyDate    []byte
 	entryName     string
 	nameLength    uint16
+	Sid           int32
+	Child         int32
 }
 
 func (de *DirectoryEntry) LessThan(b interface{}) bool {
@@ -49,6 +51,7 @@ func NewDirectoryEntry(name string, stageType uint8, directoryEntries []Director
 	var de DirectoryEntry
 	de.dirRepository = directoryEntries
 	de.stgType = stageType
+	de.Sid = -1
 	if stageType == 2 {
 		de.storageClsid = "00000000000000000000000000000000"
 		de.creationDate = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
@@ -89,6 +92,15 @@ func (de *DirectoryEntry) SetEntryName(name string) {
 
 func TryNew(streamName string, stageType uint8, directoryEntries []DirectoryEntry) *DirectoryEntry {
 	var de DirectoryEntry
+	for index, val := range directoryEntries {
+		if val.stgType == 0 {
+			directoryEntries[index] = de
+			de.Sid = int32(index)
+			return &de
+		}
+	}
+	directoryEntries = append(directoryEntries, de)
+	de.Sid = int32(len(directoryEntries) - 1)
 	return &de
 }
 
@@ -123,6 +135,11 @@ func (cf *CfStorage) AddStream(streamName string) *CfStream {
 	dirEntry := TryNew(streamName, 2, cf.compoundFile.DirectoryEntries)
 
 	cf.children.Insert(dirEntry, dirEntry)
-	fmt.Println(dirEntry)
-	return nil
+
+	value := cf.children.GetRoot()
+	cf.directoryEntry.Child = value.(*DirectoryEntry).Sid
+
+	cfStream := NewCfStream(cf.compoundFile, dirEntry)
+
+	return cfStream
 }

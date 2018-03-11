@@ -23,6 +23,9 @@ func main() {
 	b := make([]byte, 0, 1000)
 	fmt.Println(b)
 	cf := mcdf.NewCompoundFile()
+	mystream := cf.RootStorage.AddStream("somestream")
+	fmt.Println(mystream)
+
 	fmt.Println(cf)
 	h := mcdf.NewHeader()
 	f, err := os.Create("./data")
