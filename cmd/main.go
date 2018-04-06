@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"mcdf"
+	"github.com/mahosi1/mcdf"
 	"os"
 	"strings"
 
@@ -10,9 +10,7 @@ import (
 )
 
 func check(e error) {
-	if e != nil {
-		panic(e)
-	}
+
 }
 
 func main() {
@@ -29,7 +27,9 @@ func main() {
 	fmt.Println(cf)
 	h := mcdf.NewHeader()
 	f, err := os.Create("./data")
-	check(err)
+	if err != nil {
+		panic(err)
+	}
 	defer f.Close()
 	h.Write(f)
 	t := rbtree.NewTree()

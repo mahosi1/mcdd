@@ -1,0 +1,15 @@
+language: go
+go:
+  - tip
+
+os:
+  - linux
+  - osx
+
+sudo: false
+
+install:
+  - echo "skipping travis' default"
+
+script:
+  - make test-all
