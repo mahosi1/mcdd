@@ -5,80 +5,72 @@ import (
 	"io"
 )
 
+const (
+	signature            uint64 = 0xE11AB1A1E011CFD0
+	miniStreamSectorSize uint32 = 64
+	miniStreamCutoffSize uint32 = 4096
+	dirEntrySize         uint32 = 128        //128 bytes
+	maxRegSect           uint32 = 0xFFFFFFFA // Maximum regular sector number
+	difatSect            uint32 = 0xFFFFFFFC //Specifies a DIFAT sector in the FAT
+	fatSect              uint32 = 0xFFFFFFFD // Specifies a FAT sector in the FAT
+	endOfChain           uint32 = 0xFFFFFFFE // End of linked chain of sectors
+	freeSect             uint32 = 0xFFFFFFFF // Speficies unallocated sector in the FAT, Mini FAT or DIFAT
+	maxRegStreamID       uint32 = 0xFFFFFFFA // maximum regular stream ID
+	noStream             uint32 = 0xFFFFFFFF // empty pointer
+)
+
 type Header struct {
-	headerSignature        []byte
-	majorVersion           uint16
-	sectorShift            uint16
-	difat                  []uint32
-	Clsid                  []byte
-	minorVersion           uint16
-	byteOrder              uint16
-	miniSectorShift        uint32
-	unUsed                 []byte
-	DirectorySectorNumbers int32
-	FATSectorsNumber       int32
+	Signature              uint64
+	Clsid                  [16]byte
+	MinorVersion           uint16
+	MajorVersion           uint16
+	ByteOrder              uint16
+	SectorShift            uint16
+	MiniSectorShift        uint16
+	Reserved               uint16
+	Unused                 uint32
+	DirectorySectorCount   uint32
+	FATSectorsNumber       uint32
 	FirstDirectorySectorID uint32
-	unUsed2                uint32
+	Unused2                uint32
 	MinSizeStandardStream  uint32
 	FirstMiniFATSectorID   uint32
 	MiniFATSectorsNumber   int32
 	FirstDIFATSectorID     uint32
 	DIFATSectorsNumber     uint32
+	InitialDifats          [109]uint32
 }
 
 func NewHeader() *Header {
 	h := &Header{}
-	h.headerSignature = []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}
-	h.majorVersion = 3
-	h.minorVersion = 0x003E
-	h.byteOrder = 0xFFFE
-	h.Clsid = make([]byte, 16)
-	h.sectorShift = 0x0009
-	h.miniSectorShift = 6
-	h.unUsed = make([]byte, 6)
+	h.Signature = signature
+	h.MajorVersion = 3
+	h.MinorVersion = 0x003E
+	h.ByteOrder = 0xFFFE
+	h.SectorShift = 0x0009
+	h.MiniSectorShift = 6
 	h.FirstDirectorySectorID = 0xFFFFFFFE
-	h.MinSizeStandardStream = 4096
+	h.MinSizeStandardStream = miniStreamCutoffSize
 	h.FirstMiniFATSectorID = 0xFFFFFFFE
 	h.FirstDIFATSectorID = 0xFFFFFFFE
-	h.difat = make([]uint32, 109)
-	for i := range h.difat {
-		h.difat[i] = 0xFFFFFFFF
+	for i := range h.InitialDifats {
+		h.InitialDifats[i] = 0xFFFFFFFF
 	}
 	return h
 }
 
 func (h *Header) Write(w io.Writer) {
-	binary.Write(w, binary.LittleEndian, h.headerSignature)
-	binary.Write(w, binary.LittleEndian, h.Clsid)
-	binary.Write(w, binary.LittleEndian, h.minorVersion)
-	binary.Write(w, binary.LittleEndian, h.majorVersion)
-	binary.Write(w, binary.LittleEndian, h.byteOrder)
-	binary.Write(w, binary.LittleEndian, h.sectorShift)
-	binary.Write(w, binary.LittleEndian, h.miniSectorShift)
-	binary.Write(w, binary.LittleEndian, h.unUsed)
-	binary.Write(w, binary.LittleEndian, h.DirectorySectorNumbers)
-	binary.Write(w, binary.LittleEndian, h.FATSectorsNumber)
-	binary.Write(w, binary.LittleEndian, h.FirstDirectorySectorID)
-	binary.Write(w, binary.LittleEndian, h.unUsed2)
-	binary.Write(w, binary.LittleEndian, h.MinSizeStandardStream)
-	binary.Write(w, binary.LittleEndian, h.FirstMiniFATSectorID)
-	binary.Write(w, binary.LittleEndian, h.MiniFATSectorsNumber)
-	binary.Write(w, binary.LittleEndian, h.FirstDIFATSectorID)
-	binary.Write(w, binary.LittleEndian, h.DIFATSectorsNumber)
-
-	for _, i := range h.difat {
-		binary.Write(w, binary.LittleEndian, i)
-	}
-
-	if h.majorVersion == 4 {
+	binary.Write(w, binary.LittleEndian, h)
+	if h.MajorVersion == 4 {
 		zeroHead := make([]byte, 3584)
 		w.Write(zeroHead)
 	}
-
 }
 
-func check(e error) {
-	if e != nil {
-		panic(e)
+func (h *Header) Read(r io.Reader) {
+	binary.Read(r, binary.LittleEndian, h)
+	if h.MajorVersion == 4 {
+		zeroHead := make([]byte, 3584)
+		r.Read(zeroHead)
 	}
 }

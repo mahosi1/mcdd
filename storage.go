@@ -3,6 +3,7 @@ package mcdf
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/sakeven/RbTree"
 )
+
+var ErrIllegalCharacters = errors.New("illegal characters in entry name")
+var ErrEntryNameTooLong = errors.New("entry name must be shorter than 31 characters")
 
 type DirectoryEntry struct {
 	dirRepository []DirectoryEntry
@@ -70,12 +74,12 @@ func NewDirectoryEntry(name string, stageType uint8, directoryEntries []Director
 
 }
 
-func (de *DirectoryEntry) SetEntryName(name string) {
+func (de *DirectoryEntry) SetEntryName(name string) error {
 	if strings.Contains(name, "\\") || strings.Contains(name, "/") || strings.Contains(name, ":") || strings.Contains(name, "!") {
-		panic("illegal chars")
+		return ErrIllegalCharacters
 	}
 	if len(name) > 31 {
-		panic("must be smaller than 31")
+		return ErrEntryNameTooLong
 	}
 
 	temp := []byte(name)
@@ -87,7 +91,7 @@ func (de *DirectoryEntry) SetEntryName(name string) {
 	newName[len(temp)+1] = 0x00
 	de.nameLength = uint16(len(temp) + 2)
 	de.entryName = name
-
+	return nil
 }
 
 func TryNew(streamName string, stageType uint8, directoryEntries []DirectoryEntry) *DirectoryEntry {
@@ -136,8 +140,8 @@ func (cf *CfStorage) AddStream(streamName string) *CfStream {
 
 	cf.children.Insert(dirEntry, dirEntry)
 
-	value := cf.children.GetRoot()
-	cf.directoryEntry.Child = value.(*DirectoryEntry).Sid
+	// value := cf.children.GetRoot()
+	// cf.directoryEntry.Child = value.(*DirectoryEntry).Sid
 
 	cfStream := NewCfStream(cf.compoundFile, dirEntry)
 
