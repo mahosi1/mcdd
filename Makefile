@@ -11,6 +11,7 @@ test-race:
 	go test -v -race ${PACKAGES}
 
 vet:
+	go get github.com/mahosi1/mcdf
 	go vet ${PACKAGES}
 
 lint:
